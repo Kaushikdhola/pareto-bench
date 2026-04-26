@@ -1,0 +1,35 @@
+# Model registry for pareto-bench.
+#
+# Prices are in USD per million tokens and change frequently.
+# Source: https://openai.com/pricing, https://www.anthropic.com/pricing,
+#         https://ai.google.dev/pricing  (last checked 2025-04)
+# Update before running experiments; stale prices will silently skew cost accounting.
+
+models:
+  gpt-4o-mini:
+    provider: openai
+    model_id: gpt-4o-mini
+    input_price_per_M: 0.15
+    output_price_per_M: 0.60
+    max_context: 128000
+
+  gpt-4.1-mini:
+    provider: openai
+    model_id: gpt-4.1-mini
+    input_price_per_M: 0.40
+    output_price_per_M: 1.60
+    max_context: 1047576
+
+  claude-haiku-4-5:
+    provider: anthropic
+    model_id: claude-haiku-4-5-20251001
+    input_price_per_M: 0.80
+    output_price_per_M: 4.00
+    max_context: 200000
+
+  gemini-2.5-flash:
+    provider: google
+    model_id: gemini-2.5-flash-preview-04-17
+    input_price_per_M: 0.15
+    output_price_per_M: 0.60
+    max_context: 1048576

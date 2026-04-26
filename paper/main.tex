@@ -1,0 +1,263 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{natbib}
+
+\title{\textbf{Pareto-Bench}: Cost-Matched Evaluation of\\
+Multi-Agent Debate Strategies for LLM Agents}
+
+\author{
+  First Author\thanks{Corresponding author: \texttt{email@institution.edu}} \\
+  Institution \\
+  \and
+  Second Author \\
+  Institution
+}
+
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+% ============================================================
+\begin{abstract}
+% ============================================================
+
+Multi-agent debate architectures have been reported to outperform single-agent
+baselines on a range of reasoning benchmarks.  However, these comparisons
+rarely control for inference cost: a debate pipeline may consume 6--10$\times$ the
+tokens of a single call, and it is unclear whether equivalent spend on a
+stronger single-agent strategy (e.g., self-consistency with additional samples)
+would close the gap.  We introduce \textbf{Pareto-Bench}, a benchmark that
+enforces an \emph{iso-cost protocol}: every strategy variant is evaluated under
+identical USD token budgets, enabling fair comparison via Pareto frontiers over
+(accuracy, cost) space.  We evaluate five strategies---single-agent
+self-consistency, vanilla debate~\citep{du2024improving}, role-based debate,
+heterogeneous-model debate, and a reasoning-bank baseline~\citep{ouyang2025reasoningbank}---across four benchmarks (GSM8K, ARC-Challenge, GAIA Level 1,
+HumanEval) and three budget tiers.  Our results suggest that \ldots
+[TODO: fill in after running experiments].
+
+\end{abstract}
+
+% ============================================================
+\section{Introduction}
+% ============================================================
+
+Large language model (LLM) agents have shown strong performance on complex
+reasoning tasks, particularly when multiple agents collaborate through debate
+or critique cycles~\citep{du2024improving,cemri2025mast}.  Yet a fundamental
+confound persists in the literature: debate pipelines consume substantially more
+tokens than single-call baselines.  Whether the gains are attributable to the
+\emph{architecture} or merely the \emph{additional computation} is largely
+unexplored.
+
+Self-consistency~\citep{wang2023selfconsistency} provides a natural budget-matched
+baseline: rather than running three agents for two rounds, one can draw an
+equivalent number of independent samples from a single model and take the
+majority vote.  On many tasks, this comparison has not been made explicitly.
+
+We address this gap with \textbf{Pareto-Bench}, a reusable benchmark framework
+that:
+\begin{enumerate}
+    \item enforces a shared USD cost cap across all strategy variants;
+    \item evaluates strategies on four diverse benchmarks spanning math
+          reasoning, multiple-choice science, open-ended agentic tasks, and
+          code generation;
+    \item draws Pareto frontiers over (accuracy, cost) space rather than
+          reporting flat accuracy tables.
+\end{enumerate}
+
+% ============================================================
+\section{Related Work}
+% ============================================================
+
+\paragraph{Multi-agent debate.}
+\citet{du2024improving} propose a homogeneous debate procedure in which agents
+iteratively refine answers after observing peers' responses.  \citet{cemri2025mast}
+provide a taxonomy of multi-agent systems and identify debate as a prominent
+coordination pattern.
+
+\paragraph{Self-consistency.}
+\citet{wang2023selfconsistency} show that sampling multiple chain-of-thought
+reasoning traces and taking the majority vote substantially improves accuracy
+on arithmetic and commonsense benchmarks.  This serves as the primary
+iso-cost baseline in our study.
+
+\paragraph{Memory-augmented agents.}
+\citet{ouyang2025reasoningbank} augment single-agent inference with a bank of
+stored reasoning traces retrieved at inference time.  We include this as a
+fifth strategy to test whether memory access can close the gap with debate at
+matched cost.
+
+\paragraph{Benchmark evaluation.}
+Existing multi-agent benchmarks do not control for inference cost.
+Pareto-Bench is the first systematic effort to compare strategies on an
+iso-cost basis across multiple task domains.
+
+% ============================================================
+\section{Method: The Iso-Cost Protocol}
+% ============================================================
+
+\subsection{Cost accounting}
+
+All API calls pass through a \texttt{CostTracker} that records
+$(m, n_{\text{in}}, n_{\text{out}}, c, t, s, \tau, r)$---model, input tokens,
+output tokens, cost in USD, timestamp, strategy, task ID, and run ID---to a
+JSONL log.  Costs are computed from a versioned model registry (see
+\texttt{configs/models.yaml}).
+
+\subsection{Budget caps}
+
+Each experiment cell $(s, d, B, \xi)$ for strategy $s$, dataset $d$, budget
+$B$, and seed $\xi$ receives a hard USD cap enforced by
+\texttt{BudgetExceededError}.  When the cap is hit, the run terminates cleanly
+and partial results are recorded.  This ensures that every strategy completes
+approximately the same number of tasks under the same total spend.
+
+\subsection{Pareto evaluation}
+
+Let $\mathcal{S} = \{(c_s, a_s)\}$ be the set of (mean cost, mean accuracy)
+points over strategies.  A strategy $s$ dominates $s'$ if
+$c_s \le c_{s'}$ and $a_s \ge a_{s'}$ with at least one strict inequality.
+The Pareto frontier is the set of non-dominated strategies.
+
+% ============================================================
+\section{Experimental Setup}
+% ============================================================
+
+\subsection{Strategies}
+
+\begin{itemize}
+    \item \textbf{SingleAgentSC}: $N$ independent samples, majority vote
+          (self-consistency baseline; \citealt{wang2023selfconsistency}).
+    \item \textbf{VanillaDebate}: $A$ agents, $R$ rounds, majority vote
+          (\citealt{du2024improving}).
+    \item \textbf{RoleDebate}: Solver / Critic / Judge pipeline, $R$ cycles.
+    \item \textbf{HeteroDebate}: Mixed model families in each role.
+    \item \textbf{ReasoningBank}: Single agent with in-context retrieval
+          from accumulated traces (\citealt{ouyang2025reasoningbank}).
+\end{itemize}
+
+\subsection{Benchmarks}
+
+Table~\ref{tab:benchmarks} summarises the four benchmarks.
+
+\begin{table}[h]
+\centering
+\caption{Benchmark summary.}
+\label{tab:benchmarks}
+\begin{tabular}{llll}
+\toprule
+\textbf{Benchmark} & \textbf{Task type} & \textbf{Metric} & \textbf{\# test tasks} \\
+\midrule
+GSM8K              & Math word problems & Exact-match (number) & 1,319 \\
+ARC-Challenge      & Science MCQ        & Letter accuracy       & 1,172 \\
+GAIA Level 1       & Agentic reasoning  & Exact-match           & TBD \\
+HumanEval          & Code generation    & pass@1 (functional)   & 164 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Models}
+
+All experiments use \texttt{gpt-4o-mini} as the default model.
+Heterogeneous debate uses \texttt{gpt-4o-mini} (solver),
+\texttt{claude-haiku-4-5} (critic), and \texttt{gemini-2.5-flash} (judge).
+
+\subsection{Budget tiers}
+
+We evaluate at three tiers: \$0.50, \$2.00, and \$5.00 per run.
+Three seeds (42, 123, 7) are used for variance estimation.
+
+% ============================================================
+\section{Results}
+% ============================================================
+
+[TODO: fill in after running experiments.  Reference Figure~\ref{fig:headline},
+Figure~\ref{fig:hetero}, Figure~\ref{fig:per_dataset}, and Table~\ref{tab:main}.]
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.55\textwidth]{figures/fig1_headline_pareto.pdf}
+\caption{Headline Pareto frontier: mean success rate vs.\ mean cost per task,
+aggregated across all four benchmarks.}
+\label{fig:headline}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.7\textwidth]{figures/fig2_heterogeneity.pdf}
+\caption{Heterogeneity effect: vanilla debate (homogeneous) vs.\
+heterogeneous debate (mixed model families) per dataset.}
+\label{fig:hetero}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/fig3_per_dataset.pdf}
+\caption{Per-dataset breakdown of mean success rate across strategies.}
+\label{fig:per_dataset}
+\end{figure}
+
+\begin{table}[h]
+\centering
+\caption{Main results: mean success rate ± std (strategy × dataset × \$2 budget tier).}
+\label{tab:main}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Strategy} & \textbf{GSM8K} & \textbf{ARC} & \textbf{GAIA-L1} & \textbf{HumanEval} \\
+\midrule
+SingleAgentSC  & -- & -- & -- & -- \\
+VanillaDebate  & -- & -- & -- & -- \\
+RoleDebate     & -- & -- & -- & -- \\
+HeteroDebate   & -- & -- & -- & -- \\
+ReasoningBank  & -- & -- & -- & -- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ============================================================
+\section{Discussion}
+% ============================================================
+
+[TODO]
+
+% ============================================================
+\section{Limitations}
+% ============================================================
+
+\begin{itemize}
+    \item Cost estimates are based on publicly available API prices and may
+          change; all raw token counts are logged to enable re-costing.
+    \item HumanEval evaluation uses a non-execution-based heuristic in the
+          current release; full functional correctness requires a sandboxed
+          execution environment.
+    \item The GAIA Level-1 subset excludes tasks that require tool use;
+          Levels 2 and 3 are left to future work.
+    \item All experiments use API-based inference; open-weight models are
+          not yet supported.
+\end{itemize}
+
+% ============================================================
+\section{Conclusion}
+% ============================================================
+
+We presented Pareto-Bench, a cost-controlled benchmark for comparing
+multi-agent debate strategies against single-agent baselines.  By enforcing an
+iso-cost protocol and drawing Pareto frontiers, we enable researchers to ask
+whether debate architectures are genuinely worth their additional inference
+budget---a question that existing benchmarks leave unanswered.  The full
+codebase, data, and model registry are released at
+\url{https://github.com/your-org/pareto-bench}.
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}

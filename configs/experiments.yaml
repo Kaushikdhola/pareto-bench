@@ -1,0 +1,61 @@
+# Experiment matrix for pareto-bench.
+#
+# The runner iterates over every (strategy, dataset, budget_tier, seed) cell.
+# budget_usd is the total spend cap per run; the tracker raises BudgetExceededError
+# when it is reached, so runs naturally stop at the iso-cost boundary.
+
+strategies:
+  - single_agent_sc
+  - vanilla_debate
+  - role_debate
+  - hetero_debate
+  - reasoning_bank
+
+datasets:
+  - gsm8k
+  - arc_challenge
+  - gaia_l1
+  - humaneval
+
+# Three budget tiers: cheap, mid, expensive.
+# Chosen so the cheapest tier fits comfortably in a pilot and the expensive
+# tier is still affordable for a full run (~$30 total across all cells).
+budget_tiers:
+  low:
+    budget_usd: 0.50
+    label: "$0.50"
+  mid:
+    budget_usd: 2.00
+    label: "$2.00"
+  high:
+    budget_usd: 5.00
+    label: "$5.00"
+
+seeds:
+  - 42
+  - 123
+  - 7
+
+# Default model used unless a strategy overrides it.
+default_model: gpt-4o-mini
+
+# hetero_debate uses a different model per role.
+hetero_debate_models:
+  solver: gpt-4o-mini
+  critic: claude-haiku-4-5
+  judge: gemini-2.5-flash
+
+# Strategy hyper-parameters (can be overridden per-experiment).
+strategy_defaults:
+  single_agent_sc:
+    n_samples: 5
+  vanilla_debate:
+    n_agents: 3
+    n_rounds: 2
+  role_debate:
+    n_rounds: 2
+  hetero_debate:
+    n_rounds: 2
+  reasoning_bank:
+    bank_size: 20
+    n_retrieve: 3
