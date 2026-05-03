@@ -122,9 +122,9 @@ See [`experiments/README.md`](experiments/README.md) for per-experiment cost est
 ```bibtex
 @misc{pareto-bench-2025,
   title   = {Pareto-Bench: Cost-Matched Evaluation of Multi-Agent Debate Strategies for LLM Agents},
-  author  = {Author, First and Author, Second},
-  year    = {2025},
-  url     = {https://github.com/your-org/pareto-bench},
+  author  = {Dhola, Kaushik},
+  year    = {2026},
+  url     = {https://github.com/Kaushikdhola/pareto-bench}},
   note    = {Preprint. arXiv:XXXX.XXXXX}
 }
 ```
